@@ -29,7 +29,7 @@ uint32_t load_elf(PD *pgdir, const char *name) {
       iread(inode, offset, (void *)paddr, filesz);
       memset((void *)((uint32_t)paddr + filesz), 0, memsz - filesz);
       // Lab1-4: Load segment to virtual memory
-      TODO();
+      //TODO();
     }
   }
   // TODO: Lab1-4 alloc stack memory in pgdir
