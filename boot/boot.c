@@ -1,4 +1,5 @@
 #include "boot.h"
+#include <assert.h>
 
 // DO NOT DEFINE ANY NON-LOCAL VARIBLE!
 
@@ -15,6 +16,13 @@ void load_kernel() {
   for (; ph < eph; ph++) {
     if (ph->p_type == PT_LOAD) {
       // TODO: Lab1-2, Load kernel and jump
+      assert(ph->p_type == PT_LOAD);
+      uint32_t offset = ph->p_offset;
+      uint32_t vaddr = ph->p_vaddr;
+      uint32_t filesz = ph->p_filesz, memsz = ph->p_memsz;
+      assert(filesz <= memsz);
+      memcpy((void *)vaddr, (const void *)(0x8000 + offset), filesz);
+      memset((void *)(0x8000 + offset + filesz), 0, memsz - filesz);
     }
   }
   uint32_t entry = 114514; // change me

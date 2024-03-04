@@ -20,6 +20,14 @@ uint32_t load_elf(PD *pgdir, const char *name) {
     iread(inode, elf.e_phoff + i * sizeof(ph), &ph, sizeof(ph));
     if (ph.p_type == PT_LOAD) {
       // Lab1-2: Load segment to physical memory
+      uint32_t vaddr = ph.p_vaddr; 
+      uint32_t offset = ph.p_offset;
+      uint32_t filesz = ph.p_filesz, memsz = ph.p_memsz;
+      //uint32_t prot = 0;
+      void *paddr = (void *)vaddr; // Before starting pages in virtual memory 
+      assert(paddr != NULL); //Check the paddr is not NULL
+      iread(inode, offset, (void *)paddr, filesz);
+      memset((void *)((uint32_t)paddr + filesz), 0, memsz - filesz);
       // Lab1-4: Load segment to virtual memory
       TODO();
     }
