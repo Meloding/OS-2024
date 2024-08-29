@@ -31,7 +31,11 @@ void init_user_and_go() {
   // Lab1-8: argv
   // Lab2-1: proc
   // Lab3-2: add cwd
+
+  // WEEK1: ((void(*)())eip)();
   uint32_t eip = load_elf(NULL, "loaduser");
+  proc_t* proc = proc_alloc();
+  proc->entry = eip;
   assert(eip != -1);
-  ((void(*)())eip)();
+  proc_run(proc);
 }

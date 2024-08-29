@@ -10,12 +10,30 @@ proc_t pcb[PROC_NUM];
 static proc_t *curr = &pcb[0];
 
 void init_proc() {
+  // WEEK1: init proc status
+  pcb[0].status = RUNNING;
+
+
   // Lab2-1, set status and pgdir
   // Lab2-4, init zombie_sem
   // Lab3-2, set cwd
 }
 
 proc_t *proc_alloc() {
+  // WEEK1: alloc a new proc, find a unused pcb from pcb[1..PROC_NUM-1], return NULL if no such one
+  int idx = 1; // idx从1开始，因为默认0号进程为kernel进程
+  for(; idx < PROC_NUM; idx++){
+    if(pcb[idx].status == UNUSED) break;
+  } // 找到一个空的process slot
+  if(idx == PROC_NUM) return NULL; // 没有空的process slot了
+  else{
+    // 初始化PCB
+    pcb[idx].pid = next_pid++;
+    pcb[idx].status = UNINIT;
+    return &pcb[idx];
+  }
+  return NULL;
+
   // Lab2-1: find a unused pcb from pcb[1..PROC_NUM-1], return NULL if no such one
   TODO();
   // init ALL attributes of the pcb
@@ -33,9 +51,13 @@ proc_t *proc_curr() {
 void proc_run(proc_t *proc) {
   proc->status = RUNNING;
   curr = proc;
-  set_cr3(proc->pgdir);
-  set_tss(KSEL(SEG_KDATA), (uint32_t)STACK_TOP(proc->kstack));
-  irq_iret(proc->ctx);
+  ((void(*)())curr->entry)();
+
+  //proc->status = RUNNING;
+  //curr = proc;
+  //set_cr3(proc->pgdir);
+  //set_tss(KSEL(SEG_KDATA), (uint32_t)STACK_TOP(proc->kstack));
+  //irq_iret(proc->ctx);
 }
 
 void proc_addready(proc_t *proc) {

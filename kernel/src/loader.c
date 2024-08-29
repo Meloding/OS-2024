@@ -19,7 +19,7 @@ uint32_t load_elf(PD *pgdir, const char *name) {
   for (int i = 0; i < elf.e_phnum; ++i) {
     iread(inode, elf.e_phoff + i * sizeof(ph), &ph, sizeof(ph));
     if (ph.p_type == PT_LOAD) {
-      // Lab1-2: Load segment to physical memory
+      // WEEK1: Load segment to physical memory
       uint32_t vaddr = ph.p_vaddr; 
       uint32_t offset = ph.p_offset;
       uint32_t filesz = ph.p_filesz, memsz = ph.p_memsz;

@@ -22,12 +22,13 @@ typedef union {
 #define MAX_UFILE 32
 
 typedef struct proc {
-  int pid;
+  size_t entry; // the address of the process entry
+  size_t pid;
   enum {UNUSED, UNINIT, RUNNING, READY, ZOMBIE, BLOCKED} status;
-  PD *pgdir;
-  size_t brk;
   kstack_t *kstack;
   Context *ctx; // points to restore context for READY proc
+  //PD *pgdir;
+  //size_t brk;
   //struct proc *parent; // Lab2-2
   //int child_num; // Lab2-2
   //int exit_code; // Lab2-3
@@ -41,7 +42,7 @@ void init_proc();
 proc_t *proc_alloc();
 void proc_free(proc_t *proc);
 proc_t *proc_curr();
-void proc_run(proc_t *proc) __attribute__((noreturn));
+void proc_run(proc_t *proc); // __attribute__((noreturn));
 void proc_addready(proc_t *proc);
 void proc_yield();
 void proc_copycurr(proc_t *proc);
