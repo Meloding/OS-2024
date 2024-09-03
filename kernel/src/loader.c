@@ -16,6 +16,9 @@ uint32_t load_elf(PD *pgdir, const char *name) {
     iclose(inode);
     return -1;
   }
+
+  // WEEK3-virtual-memory: Restore cr3 for convenient loading
+
   for (int i = 0; i < elf.e_phnum; ++i) {
     iread(inode, elf.e_phoff + i * sizeof(ph), &ph, sizeof(ph));
     if (ph.p_type == PT_LOAD) {
@@ -23,16 +26,19 @@ uint32_t load_elf(PD *pgdir, const char *name) {
       uint32_t vaddr = ph.p_vaddr; 
       uint32_t offset = ph.p_offset;
       uint32_t filesz = ph.p_filesz, memsz = ph.p_memsz;
-      //uint32_t prot = 0;
       void *paddr = (void *)vaddr; // Before starting pages in virtual memory 
       assert(paddr != NULL); //Check the paddr is not NULL
       iread(inode, offset, (void *)paddr, filesz);
       memset((void *)((uint32_t)paddr + filesz), 0, memsz - filesz);
-      // Lab1-4: Load segment to virtual memory
-      //TODO();
+
+      // WEEK3-virtual-memory: Load segment to virtual memory
+      // TODO();
     }
   }
-  // TODO: Lab1-4 alloc stack memory in pgdir
+  
+  // TODO: WEEK3-virtual-memory alloc stack memory in pgdir
+  // WEEK3-virtual-memory: reset cr3
+
   iclose(inode);
   return elf.e_entry;
 }
@@ -40,13 +46,16 @@ uint32_t load_elf(PD *pgdir, const char *name) {
 #define MAX_ARGS_NUM 31
 
 uint32_t load_arg(PD *pgdir, char *const argv[]) {
-  // Lab1-8: Load argv to user stack
-  char *stack_top = (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE;
+  // WEEK2: Load argv to user stack directly in physical address
+  char *stack_top = (char *)(KER_MEM - 2 * PGSIZE); // (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE;
+  // char *stack_top = (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE; // change to me in WEEK3-virtual-memory
+
   size_t argv_va[MAX_ARGS_NUM + 1];
   int argc;
-  for (argc = 0; argv[argc]; ++argc) {
+  for (argc = 0; argv && argv[argc]; ++argc) {
     assert(argc < MAX_ARGS_NUM);
-    // push the string of argv[argc] to stack, record its va to argv_va[argc]
+    // WEEK2-interrupt: push the string of argv[argc] to stack, record its va to argv_va[argc]
+    // WEEK3-virtual-memory: start virtual memory mechanism
     TODO();
   }
   argv_va[argc] = 0; // set last argv NULL
@@ -56,13 +65,19 @@ uint32_t load_arg(PD *pgdir, char *const argv[]) {
     stack_top -= sizeof(size_t);
     *(size_t*)stack_top = argv_va[i];
   }
-  // push the address of the argv array as argument for _start
+
+  // WEEK2-interrupt: push the address of the argv array as argument for _start
   TODO();
+   
+  // WEEK3-virtual-memory: start virtual memory mechanism
+  
   // push argc as argument for _start
   stack_top -= sizeof(size_t);
   *(size_t*)stack_top = argc;
   stack_top -= sizeof(size_t); // a hole for return value (useless but necessary)
-  return USR_MEM - PGSIZE + ADDR2OFF(stack_top);
+
+  return (uint32_t)stack_top; 
+  // return USR_MEM - PGSIZE + ADDR2OFF(stack_top); // change to me in WEEK3-virtual-memory
 }
 
 int load_user(PD *pgdir, Context *ctx, const char *name, char *const argv[]) {
@@ -71,7 +86,8 @@ int load_user(PD *pgdir, Context *ctx, const char *name, char *const argv[]) {
   ctx->cs = USEL(SEG_UCODE);
   ctx->ds = USEL(SEG_UDATA);
   ctx->eip = eip;
-  // TODO: Lab1-6 init ctx->ss and esp
-  ctx->eflags = 0x002; // TODO: Lab1-7 change me to 0x202
+  // TODO: WEEK2 init ctx->ss and esp
+  // TODO: WEEK2 load arguments
+  ctx->eflags = 0x002; // TODO: WEEK2-interrupt change me to 0x202
   return 0;
 }
