@@ -13,7 +13,7 @@ typedef int (*syshandle_t)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern void *syscall_handle[NR_SYS];
 
 void do_syscall(Context *ctx) {
-  // TODO: Lab1-5 call specific syscall handle and set ctx register
+  // TODO: WEEK2-interrupt call specific syscall handle and set ctx register
   int sysnum = 0;
   uint32_t arg1 = 0;
   uint32_t arg2 = 0;
@@ -40,28 +40,44 @@ int sys_read(int fd, void *buf, size_t count) {
 }
 
 int sys_brk(void *addr) {
-  // TODO: Lab1-5
-  static size_t brk = 0; // use brk of proc instead of this in Lab2-1
-  size_t new_brk = PAGE_UP(addr);
+  // TODO: WEEK3-virtual-memory
+  // proc_t * proc = proc_curr();// uncomment me in WEEK3-virtual-memory
+  size_t brk = 0; // rewrite me
+  size_t new_brk = 0; // rewrite me
   if (brk == 0) {
-    brk = new_brk;
+    // proc_curr()->brk = new_brk; // uncomment me in WEEK3-virtual-memory
   } else if (new_brk > brk) {
     TODO();
   } else if (new_brk < brk) {
     // can just do nothing
+    // recover memory, Lab 1 extend
   }
   return 0;
 }
 
 void sys_sleep(int ticks) {
-  TODO(); // Lab1-7
+  // TODO(); // WEEK2-interrupt
+  uint32_t beg_tick = get_tick();
+  while(get_tick() - beg_tick <= ticks){
+    sti(); hlt(); cli(); // chage to me in WEEK2-interrupt
+    // proc_yield(); // change to me in WEEK4-process-api
+    // thread_yield();
+  }
+  return;
 }
 
 int sys_exec(const char *path, char *const argv[]) {
-  TODO(); // Lab1-8, Lab2-1
+  // TODO(); // WEEK2-interrupt, WEEK3-virtual-memory
+  // DEFAULT
+  printf("sys_exec is not implemented yet.");
+  while(1);
 }
 
 int sys_getpid() {
+  TODO(); // WEEK3-virtual-memory
+}
+
+int sys_gettid() {
   TODO(); // Lab2-1
 }
 
@@ -70,31 +86,36 @@ void sys_yield() {
 }
 
 int sys_fork() {
-  TODO(); // Lab2-2
+  TODO(); // WEEK4-process-api
 }
 
 void sys_exit(int status) {
-  TODO(); // Lab2-3
+  TODO();
+}
+
+void sys_exit_group(int status) {
+  TODO();
+  // WEEK4 process api
 }
 
 int sys_wait(int *status) {
-  TODO(); // Lab2-3, Lab2-4
+  TODO(); // WEEK4 process api
 }
 
 int sys_sem_open(int value) {
-  TODO(); // Lab2-5
+  TODO(); // WEEK5-semaphore
 }
 
 int sys_sem_p(int sem_id) {
-  TODO(); // Lab2-5
+  TODO(); // WEEK5-semaphore
 }
 
 int sys_sem_v(int sem_id) {
-  TODO(); // Lab2-5
+  TODO(); // WEEK5-semaphore
 }
 
 int sys_sem_close(int sem_id) {
-  TODO(); // Lab2-5
+  TODO(); // WEEK5-semaphore
 }
 
 int sys_open(const char *path, int mode) {
@@ -135,7 +156,15 @@ void sys_munmap(void *addr) {
   TODO();
 }
 
-int sys_clone(void (*entry)(void*), void *stack, void *arg) {
+int sys_clone(int (*entry)(void*), void *stack, void *arg, void (*ret_entry)(void)){
+  TODO();
+}
+
+int sys_join(int tid, void **retval) {
+  TODO();
+}
+
+int sys_detach(int tid) {
   TODO();
 }
 
@@ -167,6 +196,10 @@ int sys_pipe(int fd[2]) {
   TODO();
 }
 
+int sys_mkfifo(const char *path, int mode){
+  TODO();
+}
+
 int sys_link(const char *oldpath, const char *newpath) {
   TODO();
 }
@@ -182,9 +215,11 @@ void *syscall_handle[NR_SYS] = {
   [SYS_sleep] = sys_sleep,
   [SYS_exec] = sys_exec,
   [SYS_getpid] = sys_getpid,
+  [SYS_gettid] = sys_gettid,
   [SYS_yield] = sys_yield,
   [SYS_fork] = sys_fork,
   [SYS_exit] = sys_exit,
+  [SYS_exit_group] = sys_exit_group,
   [SYS_wait] = sys_wait,
   [SYS_sem_open] = sys_sem_open,
   [SYS_sem_p] = sys_sem_p,
@@ -200,6 +235,8 @@ void *syscall_handle[NR_SYS] = {
   [SYS_mmap] = sys_mmap,
   [SYS_munmap] = sys_munmap,
   [SYS_clone] = sys_clone,
+  [SYS_join] = sys_join,
+  [SYS_detach] = sys_detach,
   [SYS_kill] = sys_kill,
   [SYS_cv_open] = sys_cv_open,
   [SYS_cv_wait] = sys_cv_wait,
@@ -207,5 +244,11 @@ void *syscall_handle[NR_SYS] = {
   [SYS_cv_sigall] = sys_cv_sigall,
   [SYS_cv_close] = sys_cv_close,
   [SYS_pipe] = sys_pipe,
+  [SYS_mkfifo] = sys_mkfifo,
   [SYS_link] = sys_link,
-  [SYS_symlink] = sys_symlink};
+  [SYS_symlink] = sys_symlink,
+  // [SYS_spinlock_open] = sys_spinlock_open,
+  // [SYS_spinlock_acquire] = sys_spinlock_acquire,
+  // [SYS_spinlock_release] = sys_spinlock_release,
+  // [SYS_spinlock_close] = sys_spinlock_close,
+};
