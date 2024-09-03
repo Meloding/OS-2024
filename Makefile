@@ -5,8 +5,8 @@ default: all
 .PHONY: clean clean-all clean-fs all qemu qemu-gdb gdb print-gdbport grade submit pack
 
 # REMEMBER TO MAKE CLEAN AFTER CHANGE ME!
-STAGE  := phase1
-STAGES := phase1 phase2 phase3 phase4 phase5 phase6
+STAGE  := week1
+STAGES := week1 week2 week3 week4 week5 week6 week7 week8 week9 week10 week11 week12
 
 ifeq ($(filter $(STAGES), $(STAGE)), ) # STAGE must be valid
 $(error Invalid STAGE. Supported: $(STAGES))
@@ -139,7 +139,7 @@ USER_ELFS   := $(addprefix $(OBJDIR)/, $(basename $(USER_SRCS)))
 USER_INC    := user/include
 USER_DISK   := $(OBJDIR)/user/user.img
 
-ifeq ($(STAGE), phase1)
+ifeq ($(filter week1 week2, $(STAGE)), $(STAGE))
 USER_ADDR   := 0x1001000
 else
 USER_ADDR   := 0x8048000
