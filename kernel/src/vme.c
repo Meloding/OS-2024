@@ -20,8 +20,9 @@ void set_tss(uint32_t ss0, uint32_t esp0) {
   tss.esp0 = esp0;
 }
 
-static PD kpd;
 static PT kpt[PHY_MEM / PT_SIZE] __attribute__((used));
+
+// WEEK3-virtual-memory
 
 void init_page() {
   extern char end;
@@ -30,33 +31,33 @@ void init_page() {
   static_assert(sizeof(PDE) == 4, "PDE must be 4 bytes");
   static_assert(sizeof(PT) == PGSIZE, "PT must be one page");
   static_assert(sizeof(PD) == PGSIZE, "PD must be one page");
-  // Lab1-4: init kpd and kpt, identity mapping of [0 (or 4096), PHY_MEM)
+
+
+  // WEEK3-virtual-memory: init kpd and kpt, identity mapping of [0 (or 4096), PHY_MEM)
   TODO();
-  kpt[0].pte[0].val = 0;
-  set_cr3(&kpd);
-  set_cr0(get_cr0() | CR0_PG);
-  // Lab1-4: init free memory at [KER_MEM, PHY_MEM), a heap for kernel
+
+  // WEEK3-virtual-memory: init free memory at [KER_MEM, PHY_MEM), a heap for kernel
   TODO();
 }
 
 void *kalloc() {
-  // Lab1-4: alloc a page from kernel heap, abort when heap empty
+  // WEEK3-virtual-memory: alloc a page from kernel heap, abort when heap empty
   TODO();
 }
 
 void kfree(void *ptr) {
-  // Lab1-4: free a page to kernel heap
+  // WEEK3-virtual-memory: free a page to kernel heap
   // you can just do nothing :)
-  //TODO();
+  // TODO();
 }
 
 PD *vm_alloc() {
-  // Lab1-4: alloc a new pgdir, map memory under PHY_MEM identityly
+  // WEEK3-virtual-memory: alloc a new pgdir, map memory under PHY_MEM identityly
   TODO();
 }
 
 void vm_teardown(PD *pgdir) {
-  // Lab1-4: free all pages mapping above PHY_MEM in pgdir, then free itself
+  // WEEK3-virtual-memory: free all pages mapping above PHY_MEM in pgdir, then free itself
   // you can just do nothing :)
   //TODO();
 }
@@ -66,7 +67,7 @@ PD *vm_curr() {
 }
 
 PTE *vm_walkpte(PD *pgdir, size_t va, int prot) {
-  // Lab1-4: return the pointer of PTE which match va
+  // WEEK3-virtual-memory: return the pointer of PTE which match va
   // if not exist (PDE of va is empty) and prot&1, alloc PT and fill the PDE
   // if not exist (PDE of va is empty) and !(prot&1), return NULL
   // remember to let pde's prot |= prot, but not pte
@@ -75,26 +76,26 @@ PTE *vm_walkpte(PD *pgdir, size_t va, int prot) {
 }
 
 void *vm_walk(PD *pgdir, size_t va, int prot) {
-  // Lab1-4: translate va to pa
+  // WEEK3-virtual-memory: translate va to pa
   // if prot&1 and prot voilation ((pte->val & prot & 7) != prot), call vm_pgfault
   // if va is not mapped and !(prot&1), return NULL
   TODO();
 }
 
 void vm_map(PD *pgdir, size_t va, size_t len, int prot) {
-  // Lab1-4: map [PAGE_DOWN(va), PAGE_UP(va+len)) at pgdir, with prot
+  // WEEK3-virtual-memory: map [PAGE_DOWN(va), PAGE_UP(va+len)) at pgdir, with prot
   // if have already mapped pages, just let pte->prot |= prot
   assert(prot & PTE_P);
   assert((prot & ~7) == 0);
   size_t start = PAGE_DOWN(va);
   size_t end = PAGE_UP(va + len);
-  assert(start >= PHY_MEM);
   assert(end >= start);
+
   TODO();
 }
 
 void vm_unmap(PD *pgdir, size_t va, size_t len) {
-  // Lab1-4: unmap and free [va, va+len) at pgdir
+  // WEEK3-virtual-memory: unmap and free [va, va+len) at pgdir
   // you can just do nothing :)
   //assert(ADDR2OFF(va) == 0);
   //assert(ADDR2OFF(len) == 0);
@@ -102,7 +103,7 @@ void vm_unmap(PD *pgdir, size_t va, size_t len) {
 }
 
 void vm_copycurr(PD *pgdir) {
-  // Lab2-2: copy memory mapped in curr pd to pgdir
+  // WEEK4-process-api: copy memory mapped in curr pd to pgdir
   TODO();
 }
 
