@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-// TODO: Lab1-5 adjust the struct to the correct order
-// TODO: Lab1-6 add esp and ss
+// TODO: WEEK2: adjust the struct to the correct order
+// TODO: WEEK2: add esp and ss
 typedef struct Context {
   uint32_t eax, ebx, ecx, edx, esi, 
            edi, ebp, eip, cs, ds, 
