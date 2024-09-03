@@ -16,6 +16,7 @@ void load_kernel() {
   for (; ph < eph; ph++) {
     if (ph->p_type == PT_LOAD) {
       // TODO: Lab1-2, Load kernel and jump
+      // TODO();
       assert(ph->p_type == PT_LOAD);
       uint32_t offset = ph->p_offset;
       uint32_t vaddr = ph->p_vaddr;
@@ -25,6 +26,6 @@ void load_kernel() {
       memset((void *)(vaddr + filesz), 0, memsz - filesz);
     }
   }
-  uint32_t entry = elf->e_entry; // change me
+  uint32_t entry = elf->e_entry; // change me in WEEK1-os-start
   ((void(*)())entry)();
 }
