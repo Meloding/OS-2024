@@ -36,6 +36,10 @@ int getpid() {
   return (int)syscall(SYS_getpid, 0, 0, 0, 0, 0);
 }
 
+int gettid() {
+  return (int)syscall(SYS_gettid, 0, 0, 0, 0, 0);
+}
+
 void yield() {
   syscall(SYS_yield, 0, 0, 0, 0, 0);
 }
@@ -45,7 +49,7 @@ int fork() {
 }
 
 void exit(int status) {
-  syscall(SYS_exit, (size_t)status, 0, 0, 0, 0);
+  syscall(SYS_exit_group, (size_t)status, 0, 0, 0, 0); // exit() kill the whole process
   while (1) ;
 }
 
@@ -107,8 +111,33 @@ void munmap(void *addr) {
   syscall(SYS_munmap, (size_t)addr, 0, 0, 0, 0);
 }
 
-int clone(void (*entry)(void*), void *stack, void *arg) {
-  return (int)syscall(SYS_clone, (size_t)entry, (size_t)stack, (size_t)arg, 0, 0);
+// TODO: 实际当中的Linux是怎样处理这个功能的？
+static void clone_ret_entry(){
+  int status;
+  asm volatile (
+      "movl %%eax, %0;" // 将 %eax 寄存器中的值移动到 status 变量中
+      : "=r" (status)   // 输出操作数列表，使用 "=r" 修饰符告诉编译器将 status 变量放在寄存器中
+      :                  // 输入操作数列表为空
+      : "memory"         // 告诉编译器此汇编段可能会修改内存，因此需要加上 memory 限制符
+  );
+  thread_exit(status); // 确保clone构造的thread在return后自动调用thread_exit
+}
+
+int clone(int (*entry)(void*), void *stack, void *arg) {
+  return (int)syscall(SYS_clone, (size_t)entry, (size_t)stack, (size_t)arg, (size_t)(clone_ret_entry), 0);
+}
+
+int join(int tid, void **retval){
+  return (int)syscall(SYS_join, (size_t)tid, (size_t)retval, 0, 0, 0);
+}
+
+int detach(int tid){
+  return (int)syscall(SYS_detach, (size_t)tid, 0, 0, 0, 0);
+}
+
+void thread_exit(int status){
+  syscall(SYS_exit, (size_t)status, 0, 0, 0, 0); // thread_exit like return only kill the thread
+  while (1) ;
 }
 
 int kill(int pid) {
@@ -135,8 +164,28 @@ int cv_close(int cv_id) {
   return (int)syscall(SYS_cv_close, (size_t)cv_id, 0, 0, 0, 0);
 }
 
+int spinlock_open(){
+  return (int)syscall(SYS_spinlock_open, 0, 0, 0, 0, 0);
+}
+
+int spinlock_acquire(int lock_id){
+  return (int)syscall(SYS_spinlock_acquire, (size_t)lock_id, 0, 0, 0, 0);
+}
+
+int spinlock_release(int lock_id){
+  return (int)syscall(SYS_spinlock_release, (size_t)lock_id, 0, 0, 0, 0);
+}
+
+int spinlock_close(int lock_id){
+  return (int)syscall(SYS_spinlock_close, (size_t)lock_id, 0, 0, 0, 0);
+}
+
 int pipe(int fd[2]) {
   return (int)syscall(SYS_pipe, (size_t)fd, 0, 0, 0, 0);
+}
+
+int mkfifo(const char *path, int mode) {
+  return (int)syscall(SYS_mkfifo, (size_t)path, (size_t)mode, 0, 0, 0);
 }
 
 int link(const char *oldpath, const char *newpath) {
