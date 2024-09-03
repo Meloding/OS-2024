@@ -12,7 +12,7 @@ _start:
   outb %al, $0x92
   lgdt gdt_desc  # loading gdt
 
-  # TODO: Lab1-2, set the lowest bit of cr0
+  # TODO: WEEK1-os-start, set the lowest bit of cr0
   # Set PE bit in cr0 to start protect mode
 	movl %cr0, %eax
 	orb $0x1, %al
@@ -44,11 +44,11 @@ gdt: # 8 bytes for each table entry, at least 1 entry
   .word 0, 0
   .byte 0, 0, 0, 0
 
-  # TODO: Lab1-2, code segment entry
+  # TODO: WEEK1-os-start, code segment entry
   .word 0xffff,0
 	.byte 0,0x9a,0xcf,0
 
-  # TODO: Lab1-2, data segment entry
+  # TODO: WEEK1-os-start, data segment entry
   .word 0xffff,0
 	.byte 0,0x92,0xcf,0
 
