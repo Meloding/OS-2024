@@ -11,11 +11,10 @@ static proc_t *curr = &pcb[0];
 
 void init_proc() {
   // WEEK1: init proc status
-  pcb[0].status = RUNNING;
   // WEEK2: add ctx and kstack for interruption
   // WEEK3: add pgdir
   // WEEK5: semaphore
-  // TODO();
+  TODO();
   // Lab2-1, set status and pgdir
   // Lab2-4, init zombie_sem
   // Lab3-2, set cwd
@@ -23,19 +22,7 @@ void init_proc() {
 
 proc_t *proc_alloc() {
   // WEEK1: alloc a new proc, find a unused pcb from pcb[1..PROC_NUM-1], return NULL if no such one
-  // TODO();
-  int idx = 1;
-  for(; idx < PROC_NUM; idx++){
-    if(pcb[idx].status == UNUSED) break;
-  }
-  if(idx == PROC_NUM) return NULL;
-  else{
-    // init all attributes of the pcb
-    pcb[idx].pid = next_pid++;
-    pcb[idx].status = UNINIT;
-    return &pcb[idx];
-  }
-  return NULL;
+  TODO();
 }
 
 void proc_free(proc_t *proc) {
