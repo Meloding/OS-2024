@@ -21,19 +21,29 @@ typedef union {
 #define MAX_USEM 32
 #define MAX_UFILE 32
 
+
+// Forward declaration of proc_t to resolve cross-reference
+typedef struct proc proc_t;
+
 typedef struct proc {
-  size_t entry; // the address of the process entry
+  size_t entry; // the address of the process entry, this can be removed after WEEK2-interrupt
   size_t pid;
   enum {UNUSED, UNINIT, RUNNING, READY, ZOMBIE, BLOCKED} status;
-  kstack_t *kstack;
-  Context *ctx; // points to restore context for READY proc
-  //PD *pgdir;
+  // WEEK2-interrupt
+  //kstack_t *kstack;
+  //Context *ctx; // points to restore context for READY proc
+  // WEEK3-virtual-memory
+  //PD *pgdir; 
   //size_t brk;
-  //struct proc *parent; // Lab2-2
-  //int child_num; // Lab2-2
-  //int exit_code; // Lab2-3
-  //sem_t zombie_sem; // Lab2-4
-  //usem_t *usems[MAX_USEM]; // Lab2-5
+  // WEEK4-process-api
+  //struct proc *parent; 
+  //int child_num; 
+  //int exit_code;
+  // WEEK5-semaphore
+  //sem_t zombie_sem; 
+  //usem_t *usems[MAX_USEM];
+
+
   //file_t *files[MAX_UFILE]; // Lab3-1
   //inode_t *cwd; // Lab3-2
 } proc_t;
