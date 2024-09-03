@@ -41,6 +41,8 @@ void irq45();
 void irq46();
 void irq47();
 void irq128();
+// extern me in WEEK4-process-api
+void irq129();
 void irqall();
 
 #define PORT_PIC_MASTER 0x20
@@ -96,7 +98,7 @@ void init_cte() {
   idt[46] = GATE32(STS_IG, KSEL(SEG_KCODE), irq46, DPL_KERN);
   idt[47] = GATE32(STS_IG, KSEL(SEG_KCODE), irq47, DPL_KERN);
   idt[128] = GATE32(STS_IG, KSEL(SEG_KCODE), irq128, DPL_USER);
-  // TODO: Lab2-1 set idt[129]
+  // TODO: WEEK4-process-api set idt[129]
   set_idt(idt, sizeof(idt));
   init_intr();
 }
@@ -107,10 +109,14 @@ void irq_handle(Context *ctx) {
     exception_debug_handler(ctx);
   }
   switch (ctx->irq) {
-  // TODO: Lab1-5 handle pagefault and syscall
-  // TODO: Lab1-7 handle serial and timer
-  // TODO: Lab2-1 handle yield
-  default: assert(ctx->irq >= T_IRQ0 && ctx->irq < T_IRQ0 + NR_INTR);
+  // TODO: WEEK2 handle syscall
+  // TODO: WEEK2 handle serial and timer
+  // TODO: WEEK3-virtual-memory: page fault
+  // TODO: WEEK4-process-api: schedule
+  default: {
+    // printf("Get error irq %d\n", ctx->irq);
+    assert(ctx->irq >= T_IRQ0 && ctx->irq < T_IRQ0 + NR_INTR);
+  }
   }
   irq_iret(ctx);
 }
