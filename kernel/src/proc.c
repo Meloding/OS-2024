@@ -13,6 +13,8 @@ void init_proc() {
   // WEEK1: init proc status
   curr->status = RUNNING;
   // WEEK2: add ctx and kstack for interruption
+  curr->ctx = &(((kstack_t *)(KER_MEM - PGSIZE))->ctx);
+  curr->kstack = (kstack_t *)(KER_MEM - PGSIZE);
   // WEEK3: add pgdir
   // WEEK5: semaphore
   
@@ -26,9 +28,11 @@ proc_t *proc_alloc() {
   for(int id = 0; id < PROC_NUM; id++){
     if(pcb[id].status == UNUSED){
       proc_t *cur = &pcb[id];
-      cur->entry = 0;
+      // cur->entry = 0; remove in week2
       cur->pid = next_pid++;
       cur->status = UNINIT;
+      cur->ctx = &(((kstack_t *)(KER_MEM - PGSIZE * 2))->ctx);
+      cur->kstack = (kstack_t *)(KER_MEM - PGSIZE * 2);
       return cur;
     }
   }
@@ -49,7 +53,8 @@ void proc_run(proc_t *proc) {
   // WEEK1: start os
   proc->status = RUNNING;
   curr = proc;
-  ((void(*)())curr->entry)();
+  set_tss(KSEL(SEG_KDATA), (uint32_t)STACK_TOP(proc->kstack));
+  irq_iret(proc->ctx);
 }
 
 void proc_addready(proc_t *proc) {

@@ -110,7 +110,16 @@ void irq_handle(Context *ctx) {
   }
   switch (ctx->irq) {
   // TODO: WEEK2 handle syscall
+  case EX_SYSCALL:
+    do_syscall(ctx);
+  break;
   // TODO: WEEK2 handle serial and timer
+  case T_IRQ0 + IRQ_COM1:
+    serial_handle();
+  break;
+  case T_IRQ0 + IRQ_TIMER:
+    timer_handle();
+  break;
   // TODO: WEEK3-virtual-memory: page fault
   // TODO: WEEK4-process-api: schedule
   default: {

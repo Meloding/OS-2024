@@ -51,8 +51,12 @@ uint32_t load_arg(PD* pgdir, char* const argv[]) {
   for (argc = 0; argv && argv[argc]; ++argc) {
     assert(argc < MAX_ARGS_NUM);
     // WEEK2-interrupt: push the string of argv[argc] to stack, record its va to argv_va[argc]
+    int len = strlen(argv[argc]);
+    stack_top -= (len + 1);
+    strcpy(stack_top, argv[argc]);
+    argv_va[argc] = (uint32_t)stack_top;
     // WEEK3-virtual-memory: start virtual memory mechanism
-    TODO();
+    // TODO();
   }
   argv_va[argc] = 0; // set last argv NULL
   stack_top -= ADDR2OFF(stack_top) % 4; // align to 4 bytes
@@ -63,7 +67,10 @@ uint32_t load_arg(PD* pgdir, char* const argv[]) {
   }
 
   // WEEK2-interrupt: push the address of the argv array as argument for _start
-  TODO();
+  // TODO();
+  size_t argv_vaddr = (uint32_t)stack_top;
+  stack_top -= sizeof(size_t);
+  *(size_t*)stack_top = argv_vaddr;
 
   // WEEK3-virtual-memory: start virtual memory mechanism
 
@@ -83,7 +90,10 @@ int load_user(PD* pgdir, Context* ctx, const char* name, char* const argv[]) {
   ctx->ds = USEL(SEG_UDATA);
   ctx->eip = eip;
   // TODO: WEEK2 init ctx->ss and esp
+  ctx->ss = USEL(SEG_UDATA);
+  // ctx->esp = 0x200000 - 16;
+  ctx->esp = load_arg(pgdir, argv);
   // TODO: WEEK2 load arguments
-  ctx->eflags = 0x002; // TODO: WEEK2-interrupt change me to 0x202
+  ctx->eflags = 0x202; // TODO: WEEK2-interrupt change me to 0x202
   return 0;
 }

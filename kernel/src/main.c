@@ -15,8 +15,8 @@ int main() {
   init_serial();
   init_fs();
   //init_page(); // uncomment me at WEEK3-virtual-memory
-  //init_cte(); // uncomment me at WEEK2-interrupt
-  //init_timer(); // uncomment me at WEEK2-interrupt
+  init_cte(); // uncomment me at WEEK2-interrupt
+  init_timer(); // uncomment me at WEEK2-interrupt
   init_proc(); // uncomment me at WEEK1-os-start
   //init_dev(); // uncomment me at Lab3-1
   printf("Hello from OS!\n");
@@ -26,9 +26,18 @@ int main() {
 
 void init_user_and_go() {
   // WEEK1: ((void(*)())eip)();
-  uint32_t eip = load_elf(NULL, "loaduser");
+  // uint32_t eip = load_elf(NULL, "iotest");
+  // proc->entry = eip;
+  // assert(eip != -1);
+  
+  // WEEK2: interrupt
+  PD *pgdir = NULL;
   proc_t* proc = proc_alloc();
-  proc->entry = eip;
-  assert(eip != -1);
+  assert(proc);
+
+  char *argv[] = {"echo", "hello", "world", NULL};
+  // char *argv[] = {"sh1", NULL};
+  assert(load_user(pgdir, proc->ctx, "echo", argv) == 0);
   proc_run(proc);
+
 }

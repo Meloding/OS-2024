@@ -26,12 +26,12 @@ typedef union {
 typedef struct proc proc_t;
 
 typedef struct proc {
-  size_t entry; // the address of the process entry, this can be removed after WEEK2-interrupt
+  // size_t entry; // the address of the process entry, this can be removed after WEEK2-interrupt
   size_t pid;
   enum {UNUSED, UNINIT, RUNNING, READY, ZOMBIE, BLOCKED} status;
   // WEEK2-interrupt
-  //kstack_t *kstack;
-  //Context *ctx; // points to restore context for READY proc
+  kstack_t *kstack;
+  Context *ctx; // points to restore context for READY proc
   // WEEK3-virtual-memory
   //PD *pgdir; 
   //size_t brk;
