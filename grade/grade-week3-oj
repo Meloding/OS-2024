@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import subprocess
+from gradelib import *
+
+STOPS = [stop_on_line(".*passed!.*"),
+         stop_on_line(".*failed.*"),
+         stop_on_line(".*Abort @.*")]
+
+r = Runner(save("qemu.out"))
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# 成功编译项目：10%
+@test(10, "compile")
+def test_compile():
+    # Attempt to compile the project
+    result = subprocess.run(['make'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # Check if the compilation was successful by inspecting the return code
+    if result.returncode == 0:
+        print("Compilation successful!")
+    else:
+        print("Compilation failed.")
+        print(result.stderr.decode('utf-8'))
+    
+    assert result.returncode == 0, "Compilation did not succeed"
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+# 在虚拟内存上正确加载用户程序：20%
+
+@test(10, "loaduser")
+def test_loaduser():
+  s = """
+  $ loaduser
+  ^Hello, I am at 0x080[0-9a-f]{5}
+  loaduser test: start
+  loaduser test: passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+  
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# 正确处理页错误异常：10%
+
+@test(10, "pgfault")
+def test_pgfault():
+  s = """
+  $ pgfault
+  pgfault test: start
+  ^pagefault @ 0x080[0-9a-f]{5}, errcode = [04]
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+  
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# 正确处理`brk`系统调用：20%
+
+@test(10, "brktest")
+def test_brktest():
+  s = """
+  $ brktest
+  brktest: start
+  brktest: passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+  
+@test(10, "brktest2")
+def test_brktest2():
+  s = """
+  $ brktest2
+  sys_brk test 2: start
+  sys_brk test 2: passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+# 正确处理用户程序的参数和`exec`系统调用：40%
+@test(3, "iotest")
+def test_iotest():
+  s = """
+  $ iotest
+  iotest start.
+  input two numbers: $ 114514 1919810
+  114514 + 1919810 = 2034324
+  iotest passed!
+  """
+  _, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(['iotest', '114514 1919810']))
+  r.match(*exps, isregs=isregs, continued=True)
+
+
+@test(3, "systest")
+def test_systest():
+  s = """
+  $ systest
+  systest: start
+  systest: passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+
+@test(3, "sleeptest")
+def test_sleep():
+  s = """
+  $ sleeptest
+  sleeptest start.
+  sleeptest passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+   
+@test(3, "scanftest")
+def test_scanftest():
+  s = """
+  iotest start.
+  Please input a phrase without blank space: $ hello
+  The input phrase is hello
+  Please input 2 numbers: $ 0xffa -0x123fe
+  The sum of numx1 and numx2 is 0xfffeebfc
+  iotest passed!
+  """
+  _, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(['scanftest', 'hello', '0xffa -0x123fe']))
+  r.match(*exps, isregs=isregs, continued=True)
+
+@test(3, "large-iotest")
+def test_large_iotest():
+  s = """
+  $ large-iotest
+  Large-scale I/O test start.
+  ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJBytes written: 1024
+  Large-scale I/O test passed!
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+
+@test(10, "ping2")
+def test_ping2():
+  s = """
+  $ ping2
+  ping: pid=1, i=0, x=0
+  ping: pid=1, i=1, x=0
+  ping: pid=1, i=2, x=0
+  ping: pid=1, i=3, x=0
+  ping: pid=1, i=4, x=0
+  ping: pid=1, i=5, x=0
+  ping: pid=1, i=6, x=0
+  ping: pid=1, i=7, x=0
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(*STOPS, shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+
+
+@test(25, "shtest")
+def test_shtest():
+  s = """
+    Hello from OS!
+    $ echo hello world
+    hello world
+    $ add 26 8 9 1 23 -5
+    62
+    $ sleep 10
+    $ sleep test
+    $ echo hello
+    hello
+    $ echo OK   
+    OK
+    $ nosuchfile 
+    sh: exec failed.
+    $ loaduser
+    ^Hello, I am at 0x080[0-9a-f]{5}
+    loaduser test: start
+    loaduser test: passed!
+    $ systest
+    systest: start
+    systest: passed!
+    $ systest
+    systest: start
+    systest: passed!
+    $ systest
+    systest: start
+    systest: passed!
+    $ add 24 sdf
+    24
+    $ brktest
+    brktest: start
+    brktest: passed!
+    $ ping2
+    ping: pid=1, i=0, x=0
+    ping: pid=1, i=1, x=0
+    ping: pid=1, i=2, x=0
+    ping: pid=1, i=3, x=0
+    ping: pid=1, i=4, x=0
+    ping: pid=1, i=5, x=0
+    ping: pid=1, i=6, x=0
+    ping: pid=1, i=7, x=0
+    $ echo testpoint finishs.
+    testpoint finishs.
+  """
+  script, exps, isregs = parse_script(s)
+  r.run_qemu(stop_on_line(".*Abort @.*"), shell_script(script))
+  r.match(*exps, isregs=isregs, continued=True)
+
+
+run_tests()

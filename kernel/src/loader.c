@@ -6,10 +6,10 @@
 #include "fs.h"
 #include <elf.h>
 
-uint32_t load_elf(PD *pgdir, const char *name) {
+uint32_t load_elf(PD* pgdir, const char* name) {
   Elf32_Ehdr elf;
   Elf32_Phdr ph;
-  inode_t *inode = iopen(name, TYPE_NONE);
+  inode_t* inode = iopen(name, TYPE_NONE);
   if (!inode) return -1;
   iread(inode, 0, &elf, sizeof(elf));
   if (*(uint32_t*)(&elf) != 0x464c457f) { // check ELF magic number
@@ -24,12 +24,14 @@ uint32_t load_elf(PD *pgdir, const char *name) {
     if (ph.p_type == PT_LOAD) {
       // WEEK1: Load segment to physical memory
       // TODO();
+      iread(inode, ph.p_offset, (void*)ph.p_paddr, ph.p_filesz);
+      memset((void*)(ph.p_paddr + ph.p_filesz), 0, ph.p_memsz - ph.p_filesz);
 
       // WEEK3-virtual-memory: Load segment to virtual memory
       // TODO();
     }
   }
-  
+
   // TODO: WEEK3-virtual-memory alloc stack memory in pgdir
   // WEEK3-virtual-memory: reset cr3
 
@@ -39,9 +41,9 @@ uint32_t load_elf(PD *pgdir, const char *name) {
 
 #define MAX_ARGS_NUM 31
 
-uint32_t load_arg(PD *pgdir, char *const argv[]) {
+uint32_t load_arg(PD* pgdir, char* const argv[]) {
   // WEEK2: Load argv to user stack directly in physical address
-  char *stack_top = (char *)(KER_MEM - 2 * PGSIZE); // (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE;
+  char* stack_top = (char*)(KER_MEM - 2 * PGSIZE); // (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE;
   // char *stack_top = (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE; // change to me in WEEK3-virtual-memory
 
   size_t argv_va[MAX_ARGS_NUM + 1];
@@ -62,19 +64,19 @@ uint32_t load_arg(PD *pgdir, char *const argv[]) {
 
   // WEEK2-interrupt: push the address of the argv array as argument for _start
   TODO();
-   
+
   // WEEK3-virtual-memory: start virtual memory mechanism
-  
+
   // push argc as argument for _start
   stack_top -= sizeof(size_t);
   *(size_t*)stack_top = argc;
   stack_top -= sizeof(size_t); // a hole for return value (useless but necessary)
 
-  return (uint32_t)stack_top; 
+  return (uint32_t)stack_top;
   // return USR_MEM - PGSIZE + ADDR2OFF(stack_top); // change to me in WEEK3-virtual-memory
 }
 
-int load_user(PD *pgdir, Context *ctx, const char *name, char *const argv[]) {
+int load_user(PD* pgdir, Context* ctx, const char* name, char* const argv[]) {
   size_t eip = load_elf(pgdir, name);
   if (eip == -1) return -1;
   ctx->cs = USEL(SEG_UCODE);
