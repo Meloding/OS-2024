@@ -14,7 +14,7 @@ int main() {
   init_gdt();
   init_serial();
   init_fs();
-  //init_page(); // uncomment me at WEEK3-virtual-memory
+  init_page(); // uncomment me at WEEK3-virtual-memory
   init_cte(); // uncomment me at WEEK2-interrupt
   init_timer(); // uncomment me at WEEK2-interrupt
   init_proc(); // uncomment me at WEEK1-os-start
