@@ -28,13 +28,13 @@ typedef struct proc proc_t;
 typedef struct proc {
   // size_t entry; // the address of the process entry, this can be removed after WEEK2-interrupt
   size_t pid;
-  enum {UNUSED, UNINIT, RUNNING, READY, ZOMBIE, BLOCKED} status;
+  enum { UNUSED, UNINIT, RUNNING, READY, ZOMBIE, BLOCKED } status;
   // WEEK2-interrupt
-  kstack_t *kstack;
-  Context *ctx; // points to restore context for READY proc
+  kstack_t* kstack;
+  Context* ctx; // points to restore context for READY proc
   // WEEK3-virtual-memory
-  //PD *pgdir; 
-  //size_t brk;
+  PD* pgdir;
+  size_t brk;
   // WEEK4-process-api
   //struct proc *parent; 
   //int child_num; 
@@ -49,21 +49,21 @@ typedef struct proc {
 } proc_t;
 
 void init_proc();
-proc_t *proc_alloc();
-void proc_free(proc_t *proc);
-proc_t *proc_curr();
-void proc_run(proc_t *proc); // __attribute__((noreturn));
-void proc_addready(proc_t *proc);
+proc_t* proc_alloc();
+void proc_free(proc_t* proc);
+proc_t* proc_curr();
+void proc_run(proc_t* proc); // __attribute__((noreturn));
+void proc_addready(proc_t* proc);
 void proc_yield();
-void proc_copycurr(proc_t *proc);
-void proc_makezombie(proc_t *proc, int exitcode);
-proc_t *proc_findzombie(proc_t *proc);
+void proc_copycurr(proc_t* proc);
+void proc_makezombie(proc_t* proc, int exitcode);
+proc_t* proc_findzombie(proc_t* proc);
 void proc_block();
-int proc_allocusem(proc_t *proc);
-usem_t *proc_getusem(proc_t *proc, int sem_id);
-int proc_allocfile(proc_t *proc);
-file_t *proc_getfile(proc_t *proc, int fd);
+int proc_allocusem(proc_t* proc);
+usem_t* proc_getusem(proc_t* proc, int sem_id);
+int proc_allocfile(proc_t* proc);
+file_t* proc_getfile(proc_t* proc, int fd);
 
-void schedule(Context *ctx);
+void schedule(Context* ctx);
 
 #endif

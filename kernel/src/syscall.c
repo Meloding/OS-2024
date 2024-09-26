@@ -10,9 +10,9 @@
 
 typedef int (*syshandle_t)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
-extern void *syscall_handle[NR_SYS];
+extern void* syscall_handle[NR_SYS];
 
-void do_syscall(Context *ctx) {
+void do_syscall(Context* ctx) {
   // TODO: WEEK2-interrupt call specific syscall handle and set ctx register
   int sysnum = ctx->eax;
   uint32_t arg1 = ctx->ebx;
@@ -23,32 +23,36 @@ void do_syscall(Context *ctx) {
   int res;
   if (sysnum < 0 || sysnum >= NR_SYS) {
     res = -1;
-  } else {
+  }
+  else {
     res = ((syshandle_t)(syscall_handle[sysnum]))(arg1, arg2, arg3, arg4, arg5);
   }
   ctx->eax = res;
 }
 
-int sys_write(int fd, const void *buf, size_t count) {
+int sys_write(int fd, const void* buf, size_t count) {
   // TODO: rewrite me at Lab3-1
   return serial_write(buf, count);
 }
 
-int sys_read(int fd, void *buf, size_t count) {
+int sys_read(int fd, void* buf, size_t count) {
   // TODO: rewrite me at Lab3-1
   return serial_read(buf, count);
 }
 
-int sys_brk(void *addr) {
+int sys_brk(void* addr) {
   // TODO: WEEK3-virtual-memory
-  // proc_t * proc = proc_curr();// uncomment me in WEEK3-virtual-memory
-  size_t brk = 0; // rewrite me
-  size_t new_brk = 0; // rewrite me
+  size_t brk = proc_curr()->brk; // rewrite me
+  size_t new_brk = PAGE_UP(addr); // rewrite me
   if (brk == 0) {
-    // proc_curr()->brk = new_brk; // uncomment me in WEEK3-virtual-memory
-  } else if (new_brk > brk) {
-    TODO();
-  } else if (new_brk < brk) {
+    proc_curr()->brk = new_brk; // uncomment me in WEEK3-virtual-memory
+  }
+  else if (new_brk > brk) {
+    PD* pd = vm_curr();
+    vm_map(pd, brk, new_brk - brk, PTE_U | PTE_W | PTE_P);
+    proc_curr()->brk = brk;
+  }
+  else if (new_brk < brk) {
     // can just do nothing
     // recover memory, Lab 1 extend
   }
@@ -58,7 +62,7 @@ int sys_brk(void *addr) {
 void sys_sleep(int ticks) {
   // TODO(); // WEEK2-interrupt
   uint32_t beg_tick = get_tick();
-  while(get_tick() - beg_tick <= ticks){
+  while (get_tick() - beg_tick <= ticks) {
     sti(); hlt(); cli(); // chage to me in WEEK2-interrupt
     // proc_yield(); // change to me in WEEK4-process-api
     // thread_yield();
@@ -66,20 +70,25 @@ void sys_sleep(int ticks) {
   return;
 }
 
-int sys_exec(const char *path, char *const argv[]) {
+int sys_exec(const char* path, char* const argv[]) {
   // TODO(); // WEEK2-interrupt, WEEK3-virtual-memory
-  proc_t *proc = proc_curr();
-  PD *pgdir = NULL;
+  proc_t* proc = proc_curr();
+  // PD *pgdir = NULL;
+  PD* pgdir = vm_alloc();
   int ret = load_user(pgdir, proc->ctx, path, argv);
-  if(ret) return -1;
+  if (ret) return -1;
+  proc_curr()->pgdir = pgdir;
+  set_cr3(pgdir);
+  set_tss(KSEL(SEG_KDATA), (uint32_t)proc->kstack + PGSIZE);
   irq_iret(proc->ctx);
   // DEFAULT
   printf("sys_exec is not implemented yet.");
-  while(1);
+  while (1);
 }
 
 int sys_getpid() {
-  TODO(); // WEEK3-virtual-memory
+  // TODO(); // WEEK3-virtual-memory
+  return proc_curr()->pid;
 }
 
 int sys_gettid() {
@@ -103,7 +112,7 @@ void sys_exit_group(int status) {
   // WEEK4 process api
 }
 
-int sys_wait(int *status) {
+int sys_wait(int* status) {
   TODO(); // WEEK4 process api
 }
 
@@ -123,7 +132,7 @@ int sys_sem_close(int sem_id) {
   TODO(); // WEEK5-semaphore
 }
 
-int sys_open(const char *path, int mode) {
+int sys_open(const char* path, int mode) {
   TODO(); // Lab3-1
 }
 
@@ -139,33 +148,33 @@ uint32_t sys_lseek(int fd, uint32_t off, int whence) {
   TODO(); // Lab3-1
 }
 
-int sys_fstat(int fd, struct stat *st) {
+int sys_fstat(int fd, struct stat* st) {
   TODO(); // Lab3-1
 }
 
-int sys_chdir(const char *path) {
+int sys_chdir(const char* path) {
   TODO(); // Lab3-2
 }
 
-int sys_unlink(const char *path) {
+int sys_unlink(const char* path) {
   return iremove(path);
 }
 
 // optional syscall
 
-void *sys_mmap() {
+void* sys_mmap() {
   TODO();
 }
 
-void sys_munmap(void *addr) {
+void sys_munmap(void* addr) {
   TODO();
 }
 
-int sys_clone(int (*entry)(void*), void *stack, void *arg, void (*ret_entry)(void)){
+int sys_clone(int (*entry)(void*), void* stack, void* arg, void (*ret_entry)(void)) {
   TODO();
 }
 
-int sys_join(int tid, void **retval) {
+int sys_join(int tid, void** retval) {
   TODO();
 }
 
@@ -201,19 +210,19 @@ int sys_pipe(int fd[2]) {
   TODO();
 }
 
-int sys_mkfifo(const char *path, int mode){
+int sys_mkfifo(const char* path, int mode) {
   TODO();
 }
 
-int sys_link(const char *oldpath, const char *newpath) {
+int sys_link(const char* oldpath, const char* newpath) {
   TODO();
 }
 
-int sys_symlink(const char *oldpath, const char *newpath) {
+int sys_symlink(const char* oldpath, const char* newpath) {
   TODO();
 }
 
-void *syscall_handle[NR_SYS] = {
+void* syscall_handle[NR_SYS] = {
   [SYS_write] = sys_write,
   [SYS_read] = sys_read,
   [SYS_brk] = sys_brk,

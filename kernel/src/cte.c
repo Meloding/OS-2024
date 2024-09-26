@@ -61,8 +61,8 @@ static void init_intr() {
 }
 
 void init_cte() {
-  for (int i = 0; i < NR_IRQ; i ++) {
-    idt[i]  = GATE32(STS_IG, KSEL(SEG_KCODE), irqall, DPL_KERN);
+  for (int i = 0; i < NR_IRQ; i++) {
+    idt[i] = GATE32(STS_IG, KSEL(SEG_KCODE), irqall, DPL_KERN);
   }
   idt[0] = GATE32(STS_IG, KSEL(SEG_KCODE), irq0, DPL_KERN);
   idt[1] = GATE32(STS_IG, KSEL(SEG_KCODE), irq1, DPL_KERN);
@@ -103,25 +103,28 @@ void init_cte() {
   init_intr();
 }
 
-void irq_handle(Context *ctx) {
+void irq_handle(Context* ctx) {
   if (ctx->irq <= 16) {
     // just ignore me now, usage is in Lab1-6
     exception_debug_handler(ctx);
   }
   switch (ctx->irq) {
-  // TODO: WEEK2 handle syscall
+    // TODO: WEEK2 handle syscall
   case EX_SYSCALL:
     do_syscall(ctx);
-  break;
-  // TODO: WEEK2 handle serial and timer
+    break;
+    // TODO: WEEK2 handle serial and timer
   case T_IRQ0 + IRQ_COM1:
     serial_handle();
-  break;
+    break;
   case T_IRQ0 + IRQ_TIMER:
     timer_handle();
-  break;
-  // TODO: WEEK3-virtual-memory: page fault
-  // TODO: WEEK4-process-api: schedule
+    break;
+  case EX_PF:
+    vm_pgfault(get_cr2(), ctx->errcode);
+    break;
+    // TODO: WEEK3-virtual-memory: page fault
+    // TODO: WEEK4-process-api: schedule
   default: {
     // printf("Get error irq %d\n", ctx->irq);
     assert(ctx->irq >= T_IRQ0 && ctx->irq < T_IRQ0 + NR_INTR);

@@ -40,7 +40,6 @@ void init_page() {
   static_assert(sizeof(PT) == PGSIZE, "PT must be one page");
   static_assert(sizeof(PD) == PGSIZE, "PD must be one page");
 
-
   // WEEK3-virtual-memory: init kpd and kpt, identity mapping of [0 (or 4096), PHY_MEM)
   // TODO();
   for (int i = 0; i < PHY_MEM / PT_SIZE; i++) {
@@ -59,13 +58,13 @@ void init_page() {
 
   // WEEK3-virtual-memory: init free memory at [KER_MEM, PHY_MEM), a heap for kernel
   // TODO();
+
   free_page_list = NULL;
   for (uint32_t addr = KER_MEM; addr < PHY_MEM; addr += PGSIZE) {
     page_t* pg = free_page_list;
-    free_page_list->next = pg;
     free_page_list = (page_t*)addr;
+    free_page_list->next = pg;
   }
-
 }
 
 void* kalloc() {
@@ -74,7 +73,7 @@ void* kalloc() {
   if (free_page_list == NULL) return NULL;
   void* ret = (void*)free_page_list;
   free_page_list = free_page_list->next;
-  memset(ret, 0, sizeof(ret));
+  memset(ret, 0, PGSIZE);
   return ret;
 }
 
@@ -105,7 +104,6 @@ PD* vm_alloc() {
   for (int i = PHY_MEM / PT_SIZE; i < NR_PDE; i++) {
     pgdir->pde[i].val = 0;
   }
-
   return pgdir;
 }
 
@@ -184,6 +182,7 @@ void vm_map(PD* pgdir, size_t va, size_t len, int prot) {
     }
   }
 }
+
 
 void vm_unmap(PD* pgdir, size_t va, size_t len) {
   // WEEK3-virtual-memory: unmap and free [va, va+len) at pgdir
