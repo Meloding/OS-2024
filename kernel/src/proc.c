@@ -17,6 +17,9 @@ void init_proc() {
   curr->kstack = (kstack_t*)(KER_MEM - PGSIZE);
   // WEEK3: add pgdir
   curr->pgdir = vm_curr();
+  // WEEK4: fork
+  curr->child_num = 0;
+  curr->parent = NULL;
   // WEEK5: semaphore
 
   // Lab2-1, set status and pgdir
@@ -36,6 +39,8 @@ proc_t* proc_alloc() {
       cur->ctx = &(((kstack_t*)new_stack)->ctx);
       cur->kstack = (kstack_t*)new_stack;
       cur->pgdir = vm_alloc();
+      cur->child_num = 0;
+      cur->parent = NULL;
       return cur;
     }
   }
@@ -44,8 +49,8 @@ proc_t* proc_alloc() {
 
 void proc_free(proc_t* proc) {
   // WEEK3-virtual-memory: free proc's pgdir and kstack and mark it UNUSED
-
-  TODO();
+  // TODO();
+  proc->status = UNUSED;
 }
 
 proc_t* proc_curr() {
@@ -63,7 +68,8 @@ void proc_run(proc_t* proc) {
 
 void proc_addready(proc_t* proc) {
   // WEEK4-process-api: mark proc READY
-  TODO();
+  // TODO();
+  proc->status = READY;
 }
 
 void proc_yield() {
@@ -74,6 +80,12 @@ void proc_yield() {
 
 void proc_copycurr(proc_t* proc) {
   // WEEK4-process-api: copy curr proc
+  vm_copycurr(proc->pgdir);
+  proc->brk = proc_curr()->brk;
+  proc->kstack->ctx = proc_curr()->kstack->ctx;
+  proc->kstack->ctx.eax = 0;
+  proc->parent = proc_curr();
+  proc_curr()->child_num++;
   // WEEK5-semaphore: dup opened usems
   // Lab3-1: dup opened files
   // Lab3-2: dup cwd
@@ -82,17 +94,26 @@ void proc_copycurr(proc_t* proc) {
 
 void proc_makezombie(proc_t* proc, int exitcode) {
   // WEEK4-process-api: mark proc ZOMBIE and record exitcode, set children's parent to NULL
+  proc->status = ZOMBIE;
+  proc->exit_code = exitcode;
+  for (int i = 0; i < PROC_NUM; ++i) {
+    if (pcb[i].parent == proc) pcb[i].parent = NULL;
+  }
 
   // WEEK5-semaphore: release parent's semaphore
 
   // Lab3-1: close opened files
   // Lab3-2: close cwd
-  TODO();
+  // TODO();
 }
 
 proc_t* proc_findzombie(proc_t* proc) {
   // WEEK4-process-api: find a ZOMBIE whose parent is proc, return NULL if none
-  TODO();
+  // TODO();
+  for (int i = 0; i < PROC_NUM; i++) {
+    if (pcb[i].parent == proc && pcb[i].status == ZOMBIE) return pcb + i;
+  }
+  return NULL;
 }
 
 void proc_block() {
@@ -123,5 +144,13 @@ file_t* proc_getfile(proc_t* proc, int fd) {
 
 void schedule(Context* ctx) {
   // WEEK4-process-api: save ctx to curr->ctx, then find a READY proc and run it
-  TODO();
+  // TODO();
+  for (int pid = curr - pcb + 1; pid != curr - pcb; pid++) {
+    pid %= PROC_NUM;
+    if (pcb[pid].status == READY) {
+      (proc_curr()->ctx) = ctx;
+      proc_run(pcb + pid);
+      break;
+    }
+  }
 }

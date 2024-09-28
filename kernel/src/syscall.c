@@ -63,8 +63,8 @@ void sys_sleep(int ticks) {
   // TODO(); // WEEK2-interrupt
   uint32_t beg_tick = get_tick();
   while (get_tick() - beg_tick <= ticks) {
-    sti(); hlt(); cli(); // chage to me in WEEK2-interrupt
-    // proc_yield(); // change to me in WEEK4-process-api
+    // sti(); hlt(); cli(); // chage to me in WEEK2-interrupt
+    proc_yield(); // change to me in WEEK4-process-api
     // thread_yield();
   }
   return;
@@ -100,7 +100,13 @@ void sys_yield() {
 }
 
 int sys_fork() {
-  TODO(); // WEEK4-process-api
+  // TODO(); // WEEK4-process-api
+  proc_t* pcb = proc_alloc();
+  if (pcb == NULL)
+    return -1;
+  proc_copycurr(pcb);
+  proc_addready(pcb);
+  return pcb->pid;
 }
 
 void sys_exit(int status) {
@@ -108,12 +114,30 @@ void sys_exit(int status) {
 }
 
 void sys_exit_group(int status) {
-  TODO();
+  // TODO();
   // WEEK4 process api
+  proc_makezombie(proc_curr(), status);
+  INT(0x81);
+  assert(0);
 }
 
 int sys_wait(int* status) {
-  TODO(); // WEEK4 process api
+  // TODO(); // WEEK4 process api
+  proc_t* curr = proc_curr();
+  if (curr->child_num == 0) {
+    return -1;
+  }
+  proc_t* ch_proc;
+  while ((ch_proc = proc_findzombie(curr)) == NULL) {
+    proc_yield();
+  }
+  if (status != NULL) {
+    *status = ch_proc->exit_code;
+  }
+  int pid = ch_proc->pid;
+  proc_free(ch_proc);
+  curr->child_num--;
+  return pid;
 }
 
 int sys_sem_open(int value) {
