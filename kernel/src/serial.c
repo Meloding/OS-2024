@@ -27,7 +27,7 @@ static inline bool serial_idle() {
 }
 
 void putchar(char ch) {
-  while (!serial_idle()) ;
+  while (!serial_idle());
   outb(SERIAL_PORT, ch);
 }
 
@@ -40,6 +40,8 @@ static void push_back(char ch) {
   buffer[tail++ % BUFFER_SIZE] = ch;
   // TODO: WEEK5-semaphore V(sem) tail-clapboard times if ch=='\n'
   if (ch == '\n') {
+    int cnt = tail - clapboard;
+    while (cnt--) sem_v(&serial_sem);
     clapboard = tail;
   }
 }
@@ -89,23 +91,25 @@ void serial_handle() {
 char getchar() {
   char ch;
 
-  while ((ch = pop_front()) == 0) {
-    // serial_handle();
-    // sti(); hlt(); cli(); // change to me in WEEK2-interrupt
-    proc_yield(); // change to me in WEEK4-process-api
-  }
+  // while ((ch = pop_front()) == 0) {
+  //   // serial_handle();
+  //   // sti(); hlt(); cli(); // change to me in WEEK2-interrupt
+  //   proc_yield(); // change to me in WEEK4-process-api
+  // }
 
   // TODO: WEEK5-semaphore rewrite getchar with sem, P(sem) then pop_front
+  sem_p(&serial_sem);
+  ch = pop_front();
 
   return ch;
 }
 
-int serial_write(const void *buf, size_t count) {
+int serial_write(const void* buf, size_t count) {
   putstrn(buf, count);
   return count;
 }
 
-int serial_read(void *buf, size_t count) {
+int serial_read(void* buf, size_t count) {
   char ch = 0;
   int i = 0;
   for (; i < count && ch != '\n'; ++i) {

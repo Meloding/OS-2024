@@ -9,12 +9,21 @@ void sem_init(sem_t *sem, int value) {
 
 void sem_p(sem_t *sem) {
   // WEEK5-semaphore: dec sem's value, if value<0, add curr proc to waitlist and block it
-  TODO();
+  // TODO();
+  sem->value--;
+  if(sem->value < 0){
+    list_enqueue(&sem->wait_list, proc_curr());
+    proc_block();
+  }
 }
 
 void sem_v(sem_t *sem) {
   // WEEK5-semaphore: inc sem's value, if value<=0, dequeue a proc from waitlist and ready it
-  TODO();
+  // TODO();
+  sem->value++;
+  if(sem->value <= 0){
+    proc_addready((proc_t *)list_dequeue(&sem->wait_list));
+  }
 }
 
 #define USER_SEM_NUM 128
