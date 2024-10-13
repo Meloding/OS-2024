@@ -21,6 +21,8 @@ void init_proc() {
   curr->child_num = 0;
   curr->parent = NULL;
   // WEEK5: semaphore
+  sem_init(&curr->zombie_sem, 0);
+  memset(curr->usems, 0, sizeof(curr->usems));
 
   // Lab2-1, set status and pgdir
   // Lab2-4, init zombie_sem
@@ -41,6 +43,8 @@ proc_t* proc_alloc() {
       cur->pgdir = vm_alloc();
       cur->child_num = 0;
       cur->parent = NULL;
+      sem_init(&cur->zombie_sem, 0);
+      memset(cur->usems, 0, sizeof(cur->usems));
       return cur;
     }
   }
@@ -87,6 +91,10 @@ void proc_copycurr(proc_t* proc) {
   proc->parent = proc_curr();
   proc_curr()->child_num++;
   // WEEK5-semaphore: dup opened usems
+  for(int i = 0; i < MAX_USEM; i++){
+    if(curr->usems[i] == NULL) continue;
+    proc->usems[i] = usem_dup(curr->usems[i]);
+  }
   // Lab3-1: dup opened files
   // Lab3-2: dup cwd
   // TODO();
@@ -101,7 +109,8 @@ void proc_makezombie(proc_t* proc, int exitcode) {
   }
 
   // WEEK5-semaphore: release parent's semaphore
-
+  if (proc->parent)
+    sem_v(&proc->parent->zombie_sem);
   // Lab3-1: close opened files
   // Lab3-2: close cwd
   // TODO();
@@ -124,12 +133,18 @@ void proc_block() {
 
 int proc_allocusem(proc_t* proc) {
   // WEEK5: find a free slot in proc->usems, return its index, or -1 if none
-  TODO();
+  // TODO();
+  for(int i = 0; i < MAX_USEM; i++){
+    if(proc->usems[i] != NULL) continue;
+    return i;
+  }
+  return -1;
 }
 
 usem_t* proc_getusem(proc_t* proc, int sem_id) {
   // WEEK5: return proc->usems[sem_id], or NULL if sem_id out of bound
-  TODO();
+  // TODO();
+  return (sem_id >= MAX_USEM || sem_id < 0) ? NULL : proc->usems[sem_id];
 }
 
 int proc_allocfile(proc_t* proc) {

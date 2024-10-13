@@ -128,9 +128,12 @@ int sys_wait(int* status) {
     return -1;
   }
   proc_t* ch_proc;
-  while ((ch_proc = proc_findzombie(curr)) == NULL) {
-    proc_yield();
-  }
+  // while ((ch_proc = proc_findzombie(curr)) == NULL) {
+    // proc_yield();
+  // }
+  sem_p(&curr->zombie_sem);
+  ch_proc = proc_findzombie(curr);
+  assert(ch_proc);
   if (status != NULL) {
     *status = ch_proc->exit_code;
   }
@@ -141,19 +144,39 @@ int sys_wait(int* status) {
 }
 
 int sys_sem_open(int value) {
-  TODO(); // WEEK5-semaphore
+  // TODO(); // WEEK5-semaphore
+    int id = proc_allocusem(proc_curr());
+    if(id == -1) return -1;
+    usem_t *usem_u = usem_alloc(value);
+    if (usem_u == NULL) return -1;
+    proc_curr()->usems[id] = usem_u;
+    if(proc_getusem(proc_curr(), id) == NULL) return -1;
+    return id;
 }
 
 int sys_sem_p(int sem_id) {
-  TODO(); // WEEK5-semaphore
+  // TODO(); // WEEK5-semaphore
+    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
+    if (usem_u == NULL) return -1;
+    sem_p(&usem_u->sem);
+    return 0;
 }
 
 int sys_sem_v(int sem_id) {
-  TODO(); // WEEK5-semaphore
+  // TODO(); // WEEK5-semaphore
+    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
+    if (usem_u == NULL) return -1;
+    sem_v(&usem_u->sem);
+    return 0;
 }
 
 int sys_sem_close(int sem_id) {
-  TODO(); // WEEK5-semaphore
+  // TODO(); // WEEK5-semaphore
+    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
+    if (usem_u == NULL) return -1;
+    usem_close(usem_u);
+    proc_curr()->usems[sem_id] = NULL;
+    return 0;
 }
 
 int sys_open(const char* path, int mode) {
