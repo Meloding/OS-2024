@@ -78,6 +78,7 @@ typedef struct {
 #define KER_MEM   0x00200000  // the max static memory of kernel
 #define PHY_MEM   0x08000000  // QEMU has 128MB physical memory
 #define USR_MEM   0xc0000000  // the memory top of user proc
+#define VIR_MEM   0xf0000000
 
 #define PGSIZE    4096                           // page size in x86
 #define PGMASK    (PGSIZE - 1)                   // page mask in x86
@@ -130,7 +131,7 @@ typedef union PageTableEntry {
     uint32_t page_cache_disable : 1;
     uint32_t accessed : 1;
     uint32_t dirty : 1;
-    uint32_t pad0 : 1;
+    uint32_t cow : 1;
     uint32_t global : 1;
     uint32_t pad1 : 3;
     uint32_t page_frame : 20;

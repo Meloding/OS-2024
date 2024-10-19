@@ -145,38 +145,38 @@ int sys_wait(int* status) {
 
 int sys_sem_open(int value) {
   // TODO(); // WEEK5-semaphore
-    int id = proc_allocusem(proc_curr());
-    if(id == -1) return -1;
-    usem_t *usem_u = usem_alloc(value);
-    if (usem_u == NULL) return -1;
-    proc_curr()->usems[id] = usem_u;
-    if(proc_getusem(proc_curr(), id) == NULL) return -1;
-    return id;
+  int id = proc_allocusem(proc_curr());
+  if (id == -1) return -1;
+  usem_t* usem_u = usem_alloc(value);
+  if (usem_u == NULL) return -1;
+  proc_curr()->usems[id] = usem_u;
+  if (proc_getusem(proc_curr(), id) == NULL) return -1;
+  return id;
 }
 
 int sys_sem_p(int sem_id) {
   // TODO(); // WEEK5-semaphore
-    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
-    if (usem_u == NULL) return -1;
-    sem_p(&usem_u->sem);
-    return 0;
+  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  if (usem_u == NULL) return -1;
+  sem_p(&usem_u->sem);
+  return 0;
 }
 
 int sys_sem_v(int sem_id) {
   // TODO(); // WEEK5-semaphore
-    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
-    if (usem_u == NULL) return -1;
-    sem_v(&usem_u->sem);
-    return 0;
+  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  if (usem_u == NULL) return -1;
+  sem_v(&usem_u->sem);
+  return 0;
 }
 
 int sys_sem_close(int sem_id) {
   // TODO(); // WEEK5-semaphore
-    usem_t *usem_u = proc_getusem(proc_curr(), sem_id);
-    if (usem_u == NULL) return -1;
-    usem_close(usem_u);
-    proc_curr()->usems[sem_id] = NULL;
-    return 0;
+  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  if (usem_u == NULL) return -1;
+  usem_close(usem_u);
+  proc_curr()->usems[sem_id] = NULL;
+  return 0;
 }
 
 int sys_open(const char* path, int mode) {
@@ -210,11 +210,20 @@ int sys_unlink(const char* path) {
 // optional syscall
 
 void* sys_mmap() {
-  TODO();
+  // TODO();
+  for (uint32_t addr = USR_MEM; addr < VIR_MEM; addr += PGSIZE) {
+    PTE* pte = vm_walkpte(vm_curr(), addr, 0);
+    if (pte == NULL || pte->present == 0) {
+      // printf("find %x\n", addr);
+      vm_map(vm_curr(), addr, PGSIZE, 7);
+      return (void*)addr;
+    }
+  }
+  return NULL;
 }
 
 void sys_munmap(void* addr) {
-  TODO();
+  // TODO();
 }
 
 int sys_clone(int (*entry)(void*), void* stack, void* arg, void (*ret_entry)(void)) {
@@ -234,23 +243,29 @@ int sys_kill(int pid) {
 }
 
 int sys_cv_open() {
-  TODO();
+  return sys_sem_open(0);
 }
 
 int sys_cv_wait(int cv_id, int sem_id) {
-  TODO();
+  sys_sem_v(sem_id);
+  return sys_sem_p(cv_id);
 }
 
 int sys_cv_sig(int cv_id) {
-  TODO();
+  return sys_sem_v(cv_id);
 }
 
 int sys_cv_sigall(int cv_id) {
-  TODO();
+  sem_t *sem = &proc_getusem(proc_curr(), cv_id)->sem;
+  int pcnt = -proc_getusem(proc_curr(), cv_id)->sem.value;
+  if (pcnt <= 0) return 0;
+  while (pcnt--)
+    sem_v(sem);
+  return 0;
 }
 
 int sys_cv_close(int cv_id) {
-  TODO();
+  return sys_sem_close(cv_id);
 }
 
 int sys_pipe(int fd[2]) {

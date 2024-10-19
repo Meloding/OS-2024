@@ -128,9 +128,8 @@ void irq_handle(Context* ctx) {
     // TODO: WEEK4-process-api: schedule
   case 0x81:
     schedule(ctx);
-  break;
+    break;
   default: {
-    // printf("Get error irq %d\n", ctx->irq);
     assert(ctx->irq >= T_IRQ0 && ctx->irq < T_IRQ0 + NR_INTR);
   }
   }
