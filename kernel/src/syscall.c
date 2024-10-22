@@ -42,15 +42,16 @@ int sys_read(int fd, void* buf, size_t count) {
 
 int sys_brk(void* addr) {
   // TODO: WEEK3-virtual-memory
-  size_t brk = proc_curr()->brk; // rewrite me
+  proc_t* main_thread = proc_curr()->group_leader;
+  size_t brk = main_thread->brk; // rewrite me
   size_t new_brk = PAGE_UP(addr); // rewrite me
   if (brk == 0) {
-    proc_curr()->brk = new_brk; // uncomment me in WEEK3-virtual-memory
+    main_thread->brk = new_brk; // uncomment me in WEEK3-virtual-memory
   }
   else if (new_brk > brk) {
     PD* pd = vm_curr();
     vm_map(pd, brk, new_brk - brk, PTE_U | PTE_W | PTE_P);
-    proc_curr()->brk = brk;
+    main_thread->brk = brk;
   }
   else if (new_brk < brk) {
     // can just do nothing
@@ -88,11 +89,11 @@ int sys_exec(const char* path, char* const argv[]) {
 
 int sys_getpid() {
   // TODO(); // WEEK3-virtual-memory
-  return proc_curr()->pid;
+  return proc_curr()->tgid;
 }
 
 int sys_gettid() {
-  TODO(); // Lab2-1
+  return proc_curr()->pid; // Lab2-1
 }
 
 void sys_yield() {
@@ -109,13 +110,34 @@ int sys_fork() {
   return pcb->pid;
 }
 
-void sys_exit(int status) {
-  TODO();
-}
-
 void sys_exit_group(int status) {
+  // printf("----------------\n");
   // TODO();
   // WEEK4 process api
+  proc_t *main_thread = proc_curr()->group_leader;
+  for (proc_t *cur = main_thread->thread_group; cur; cur = cur->thread_group) {
+    thread_free(cur);
+  }
+  proc_makezombie(proc_curr(), status);
+  INT(0x81);
+  assert(0);
+}
+
+void sys_exit(int status) {
+  // printf("==========\n");
+  proc_t *main_thread = proc_curr()->group_leader;
+  if (main_thread == proc_curr()) {
+    // printf("num %d\n", main_thread->thread_num);
+    while(main_thread->thread_num > 1){ // cv-like operation
+      proc_yield();
+    }
+    sys_exit_group(status);
+
+    // printf("num2 %d\n", main_thread->thread_num);
+    assert(main_thread->thread_num > 1);
+    return;
+  }
+  main_thread->thread_num--;
   proc_makezombie(proc_curr(), status);
   INT(0x81);
   assert(0);
@@ -123,7 +145,7 @@ void sys_exit_group(int status) {
 
 int sys_wait(int* status) {
   // TODO(); // WEEK4 process api
-  proc_t* curr = proc_curr();
+  proc_t* curr = proc_curr()->group_leader;
   if (curr->child_num == 0) {
     return -1;
   }
@@ -227,7 +249,41 @@ void sys_munmap(void* addr) {
 }
 
 int sys_clone(int (*entry)(void*), void* stack, void* arg, void (*ret_entry)(void)) {
-  TODO();
+  proc_t* proc = proc_alloc();
+  if (proc == NULL) return -1;
+  proc_t* curr = proc_curr();
+  proc_t* main_thread = curr->group_leader;
+
+  proc->pgdir = curr->pgdir;
+  proc->tgid = curr->tgid;
+  proc->group_leader = main_thread;
+
+  printf("%p %x\n", arg, *((char**)arg));
+  for (char**cur=(char**)arg; *cur;cur++){
+    printf("%p %x\n", cur, *cur);
+  }
+  void* stack_top = stack - PGSIZE;
+  stack_top -= sizeof(size_t);
+  *(size_t*)stack_top = (uint32_t)arg;
+  stack_top -= sizeof(size_t);
+  *(size_t*)stack_top = 1;
+  stack_top -= sizeof(size_t);
+  *(size_t*)stack_top = (uint32_t)ret_entry;
+
+  proc->thread_group = main_thread->thread_group;
+  main_thread->thread_group = proc;
+  main_thread->thread_num++;
+
+  proc->ctx->eip = (uint32_t)entry;
+  proc->ctx->cs = USEL(SEG_UCODE);
+  proc->ctx->ds = USEL(SEG_UDATA);
+  proc->ctx->ss = USEL(SEG_UDATA);
+  proc->ctx->esp = (uint32_t)stack_top;
+  proc->ctx->eflags = 0x202;
+
+  proc_addready(proc);
+
+  return proc->pid;
 }
 
 int sys_join(int tid, void** retval) {
@@ -256,7 +312,7 @@ int sys_cv_sig(int cv_id) {
 }
 
 int sys_cv_sigall(int cv_id) {
-  sem_t *sem = &proc_getusem(proc_curr(), cv_id)->sem;
+  sem_t* sem = &proc_getusem(proc_curr(), cv_id)->sem;
   int pcnt = -proc_getusem(proc_curr(), cv_id)->sem.value;
   if (pcnt <= 0) return 0;
   while (pcnt--)

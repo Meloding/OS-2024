@@ -24,6 +24,11 @@ void init_proc() {
   sem_init(&curr->zombie_sem, 0);
   memset(curr->usems, 0, sizeof(curr->usems));
 
+  curr->tgid = 0;
+  curr->thread_num = 0;
+  curr->thread_group = NULL;
+  curr->group_leader = NULL;
+
   // Lab2-1, set status and pgdir
   // Lab2-4, init zombie_sem
   // Lab3-2, set cwd
@@ -45,6 +50,10 @@ proc_t* proc_alloc() {
       cur->parent = NULL;
       sem_init(&cur->zombie_sem, 0);
       memset(cur->usems, 0, sizeof(cur->usems));
+      cur->tgid = cur->pid;
+      cur->group_leader = cur;
+      cur->thread_num = 0;
+      cur->thread_group = NULL;
       return cur;
     }
   }
@@ -91,8 +100,8 @@ void proc_copycurr(proc_t* proc) {
   proc->parent = proc_curr();
   proc_curr()->child_num++;
   // WEEK5-semaphore: dup opened usems
-  for(int i = 0; i < MAX_USEM; i++){
-    if(curr->usems[i] == NULL) continue;
+  for (int i = 0; i < MAX_USEM; i++) {
+    if (curr->usems[i] == NULL) continue;
     proc->usems[i] = usem_dup(curr->usems[i]);
   }
   // Lab3-1: dup opened files
@@ -134,8 +143,8 @@ void proc_block() {
 int proc_allocusem(proc_t* proc) {
   // WEEK5: find a free slot in proc->usems, return its index, or -1 if none
   // TODO();
-  for(int i = 0; i < MAX_USEM; i++){
-    if(proc->usems[i] != NULL) continue;
+  for (int i = 0; i < MAX_USEM; i++) {
+    if (proc->group_leader->usems[i] != NULL) continue;
     return i;
   }
   return -1;
@@ -144,7 +153,7 @@ int proc_allocusem(proc_t* proc) {
 usem_t* proc_getusem(proc_t* proc, int sem_id) {
   // WEEK5: return proc->usems[sem_id], or NULL if sem_id out of bound
   // TODO();
-  return (sem_id >= MAX_USEM || sem_id < 0) ? NULL : proc->usems[sem_id];
+  return (sem_id >= MAX_USEM || sem_id < 0) ? NULL : proc->group_leader->usems[sem_id];
 }
 
 int proc_allocfile(proc_t* proc) {
@@ -168,4 +177,9 @@ void schedule(Context* ctx) {
       break;
     }
   }
+}
+
+void thread_free(proc_t *thread) {
+  thread->status = UNUSED;
+  thread->group_leader->thread_num--;
 }

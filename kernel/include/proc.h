@@ -42,6 +42,11 @@ typedef struct proc {
   // WEEK5-semaphore
   sem_t zombie_sem; 
   usem_t *usems[MAX_USEM];
+  // WEEK7-thread
+  size_t tgid;                // 进程组ID
+  int thread_num;             // 进程所有的线程数量
+  struct proc *group_leader;  // 进程控制块指针，指向进程对应的主线程
+  struct proc *thread_group;  // 链表指针，指向线程链表的下一个成员。
 
 
   //file_t *files[MAX_UFILE]; // Lab3-1
@@ -65,5 +70,6 @@ int proc_allocfile(proc_t* proc);
 file_t* proc_getfile(proc_t* proc, int fd);
 
 void schedule(Context* ctx);
+void thread_free(proc_t *thread);
 
 #endif
