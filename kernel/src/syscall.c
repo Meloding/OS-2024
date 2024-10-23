@@ -76,12 +76,48 @@ int sys_exec(const char* path, char* const argv[]) {
   proc_t* proc = proc_curr();
   // PD *pgdir = NULL;
   PD* pgdir = vm_alloc();
+  proc->ctx = &(proc->kstack->ctx);
   int ret = load_user(pgdir, proc->ctx, path, argv);
   if (ret) return -1;
-  proc_curr()->pgdir = pgdir;
-  set_cr3(pgdir);
-  set_tss(KSEL(SEG_KDATA), (uint32_t)proc->kstack + PGSIZE);
-  irq_iret(proc->ctx);
+  proc->pgdir = pgdir;
+
+  proc_t* main_thread = proc->group_leader;
+  if (main_thread == proc) {
+    // printf("1== %p  %p  %p\n", proc, proc->pgdir, pgdir);
+    for (proc_t* cur = main_thread->thread_group; cur; cur = cur->thread_group) {
+      thread_free(cur);
+    }
+    main_thread->thread_group = NULL;
+    main_thread->thread_num = 1;
+  }
+  else {
+    // printf("2== %p  %p  %p\n", proc, proc->pgdir, pgdir);
+    // proc_t tmp;
+    // memcpy(&tmp, main_thread, sizeof(proc_t));
+    // memcpy(main_thread, proc, sizeof(proc_t));
+    // memcpy(proc, &tmp, sizeof(proc_t));
+    for (proc_t* cur = main_thread; cur; cur = cur->thread_group) {
+      if (cur != proc) thread_free(cur);
+    }
+    main_thread->pgdir = proc->pgdir;
+    // main_thread->kstack->ctx = *proc->ctx;
+    // memcpy(&main_thread->kstack->ctx, proc->ctx, sizeof(Context));
+    main_thread->kstack = proc->kstack;
+    main_thread->ctx = proc->ctx;
+    memcpy(proc, main_thread, sizeof(proc_t));
+    proc->thread_group = NULL;
+    proc->thread_num = 1;
+    proc->group_leader = proc;
+    // proc->pid = main_thread->pid;
+    // proc->tgid = main_thread->pid;
+  }
+  // thread_free(proc);
+  // printf("== %p  %p  %p\n", proc, proc->pgdir, pgdir);
+  proc_run(proc);
+  // return;
+  // set_cr3(pgdir);
+  // set_tss(KSEL(SEG_KDATA), (uint32_t)proc->kstack + PGSIZE);
+  // irq_iret(proc->ctx);
   // DEFAULT
   printf("sys_exec is not implemented yet.");
   while (1);
@@ -114,28 +150,40 @@ void sys_exit_group(int status) {
   // printf("----------------\n");
   // TODO();
   // WEEK4 process api
-  proc_t *main_thread = proc_curr()->group_leader;
-  for (proc_t *cur = main_thread->thread_group; cur; cur = cur->thread_group) {
+  proc_t* main_thread = proc_curr()->group_leader;
+  for (proc_t* cur = main_thread->thread_group; cur; cur = cur->thread_group) {
     thread_free(cur);
   }
-  proc_makezombie(proc_curr(), status);
+  proc_makezombie(main_thread, status);
   INT(0x81);
   assert(0);
 }
 
 void sys_exit(int status) {
   // printf("==========\n");
-  proc_t *main_thread = proc_curr()->group_leader;
-  if (main_thread == proc_curr()) {
+  proc_t* main_thread = proc_curr()->group_leader;
+  proc_t* cur_thread = proc_curr();
+  if (main_thread == cur_thread) {
     // printf("num %d\n", main_thread->thread_num);
-    while(main_thread->thread_num > 1){ // cv-like operation
+    while (main_thread->thread_num > 1) { // cv-like operation
       proc_yield();
     }
-    sys_exit_group(status);
+    for (proc_t* cur = main_thread->thread_group; cur; cur = cur->thread_group) {
+      thread_free(cur);
+    }
+    proc_makezombie(cur_thread, status);
+    INT(0x81);
 
     // printf("num2 %d\n", main_thread->thread_num);
     assert(main_thread->thread_num > 1);
     return;
+  }
+  if (cur_thread->detached == 1) {
+    proc_t *tmp = main_thread;
+    while(tmp && tmp->thread_group != cur_thread) tmp = tmp->thread_group;
+    tmp->thread_group = cur_thread->thread_group;
+    cur_thread->thread_group = NULL;
+    proc_set_kernel_parent(cur_thread);
   }
   main_thread->thread_num--;
   proc_makezombie(proc_curr(), status);
@@ -167,18 +215,18 @@ int sys_wait(int* status) {
 
 int sys_sem_open(int value) {
   // TODO(); // WEEK5-semaphore
-  int id = proc_allocusem(proc_curr());
+  int id = proc_allocusem(proc_curr()->group_leader);
   if (id == -1) return -1;
   usem_t* usem_u = usem_alloc(value);
   if (usem_u == NULL) return -1;
-  proc_curr()->usems[id] = usem_u;
-  if (proc_getusem(proc_curr(), id) == NULL) return -1;
+  proc_curr()->group_leader->usems[id] = usem_u;
+  if (proc_getusem(proc_curr()->group_leader, id) == NULL) return -1;
   return id;
 }
 
 int sys_sem_p(int sem_id) {
   // TODO(); // WEEK5-semaphore
-  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  usem_t* usem_u = proc_getusem(proc_curr()->group_leader, sem_id);
   if (usem_u == NULL) return -1;
   sem_p(&usem_u->sem);
   return 0;
@@ -186,7 +234,7 @@ int sys_sem_p(int sem_id) {
 
 int sys_sem_v(int sem_id) {
   // TODO(); // WEEK5-semaphore
-  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  usem_t* usem_u = proc_getusem(proc_curr()->group_leader, sem_id);
   if (usem_u == NULL) return -1;
   sem_v(&usem_u->sem);
   return 0;
@@ -194,10 +242,10 @@ int sys_sem_v(int sem_id) {
 
 int sys_sem_close(int sem_id) {
   // TODO(); // WEEK5-semaphore
-  usem_t* usem_u = proc_getusem(proc_curr(), sem_id);
+  usem_t* usem_u = proc_getusem(proc_curr()->group_leader, sem_id);
   if (usem_u == NULL) return -1;
   usem_close(usem_u);
-  proc_curr()->usems[sem_id] = NULL;
+  proc_curr()->group_leader->usems[sem_id] = NULL;
   return 0;
 }
 
@@ -258,17 +306,11 @@ int sys_clone(int (*entry)(void*), void* stack, void* arg, void (*ret_entry)(voi
   proc->tgid = curr->tgid;
   proc->group_leader = main_thread;
 
-  printf("%p %x\n", arg, *((char**)arg));
-  for (char**cur=(char**)arg; *cur;cur++){
-    printf("%p %x\n", cur, *cur);
-  }
-  void* stack_top = stack - PGSIZE;
+  void* stack_top = stack;
+  stack_top -= sizeof(void*);
+  *(size_t*)stack_top = (size_t)arg;
   stack_top -= sizeof(size_t);
-  *(size_t*)stack_top = (uint32_t)arg;
-  stack_top -= sizeof(size_t);
-  *(size_t*)stack_top = 1;
-  stack_top -= sizeof(size_t);
-  *(size_t*)stack_top = (uint32_t)ret_entry;
+  *(size_t*)stack_top = (size_t)ret_entry;
 
   proc->thread_group = main_thread->thread_group;
   main_thread->thread_group = proc;
@@ -287,15 +329,29 @@ int sys_clone(int (*entry)(void*), void* stack, void* arg, void (*ret_entry)(voi
 }
 
 int sys_join(int tid, void** retval) {
-  TODO();
+  proc_t *proc = pid2proc(tid);
+  if (proc == NULL || proc == proc_curr() || proc->joinable != 1) {
+    return 3;
+  }
+  proc->joinable = 0;
+  sem_p(&proc->join_sem);
+  if (retval != NULL) *retval = (void *)proc->exit_code;
+  return 0;
 }
 
 int sys_detach(int tid) {
-  TODO();
+  return thread_detach(tid);
 }
 
 int sys_kill(int pid) {
-  TODO();
+  proc_t *proc = pid2proc(pid);
+  if (proc == NULL) return -1;
+  for (proc_t *cur = proc->thread_group; cur; cur = cur->thread_group) {
+    thread_free(cur);
+  }
+  proc_makezombie(proc, 9);
+  if (proc == proc_curr()) INT(0x81);
+  return 0;
 }
 
 int sys_cv_open() {

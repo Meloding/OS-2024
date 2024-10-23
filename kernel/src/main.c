@@ -44,7 +44,7 @@ void init_user_and_go() {
   // printf("before proc_run\n");
   proc_addready(proc);
 
-  
+
   // proc_t* proc1 = proc_alloc();
   // proc_t* proc2 = proc_alloc();
   // assert(load_user(proc1->pgdir, proc1->ctx, "ping2", argv) == 0);
@@ -55,7 +55,22 @@ void init_user_and_go() {
   // proc_addready(proc2);
   // // while(1) proc_yield();
   sti();
-  while(1);
+  // WEEK7-thread: kernel free all isolated processes or detached threads
+  proc_t* kernel = proc_curr();
+  // infinit loop
+  while (1) {
+    proc_t* proc_child;
+    // Don't use zombie_sem cause there should always be one process being runnable.
+    cli(); // close interrupt first
+    while (!(proc_child = proc_findzombie(kernel))) {
+      sti();
+      proc_yield();
+    }
+    if (proc_child->thread_group != proc_child) {
+      thread_free(proc_child);
+    } else proc_free(proc_child);
+    kernel->child_num--;
+  }
   proc_run(proc);
 
 }

@@ -105,6 +105,7 @@ void init_cte() {
 }
 
 void irq_handle(Context* ctx) {
+  proc_curr()->ctx = ctx;
   if (ctx->irq <= 16) {
     // just ignore me now, usage is in Lab1-6
     exception_debug_handler(ctx);
@@ -123,6 +124,7 @@ void irq_handle(Context* ctx) {
     break;
     // TODO: WEEK3-virtual-memory: page fault
   case EX_PF:
+    // printf("eip %p\n", ctx->eip);
     vm_pgfault(get_cr2(), ctx->errcode);
     break;
     // TODO: WEEK4-process-api: schedule
@@ -130,6 +132,7 @@ void irq_handle(Context* ctx) {
     schedule(ctx);
     break;
   default: {
+    // printf("%d %x %x\n", ctx->irq, ctx->ds, ctx->eip);
     assert(ctx->irq >= T_IRQ0 && ctx->irq < T_IRQ0 + NR_INTR);
   }
   }

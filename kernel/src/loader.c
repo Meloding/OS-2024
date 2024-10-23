@@ -52,7 +52,7 @@ uint32_t load_elf(PD* pgdir, const char* name) {
 uint32_t load_arg(PD* pgdir, char* const argv[]) {
   // WEEK2: Load argv to user stack directly in physical address
   // char* stack_top = (char*)(KER_MEM - 2 * PGSIZE); // (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE;
-  char *stack_top = (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE; // change to me in WEEK3-virtual-memory
+  char* stack_top = (char*)vm_walk(pgdir, USR_MEM - PGSIZE, 7) + PGSIZE; // change to me in WEEK3-virtual-memory
 
   size_t argv_va[MAX_ARGS_NUM + 1];
   int argc;
@@ -65,7 +65,7 @@ uint32_t load_arg(PD* pgdir, char* const argv[]) {
     argv_va[argc] = (uint32_t)stack_top;
     // WEEK3-virtual-memory: start virtual memory mechanism
     // TODO();
-    argv_va[argc] = USR_MEM - PGSIZE + ADDR2OFF(stack_top); 
+    argv_va[argc] = USR_MEM - PGSIZE + ADDR2OFF(stack_top);
   }
   argv_va[argc] = 0; // set last argv NULL
   stack_top -= ADDR2OFF(stack_top) % 4; // align to 4 bytes
@@ -105,6 +105,6 @@ int load_user(PD* pgdir, Context* ctx, const char* name, char* const argv[]) {
   ctx->esp = load_arg(pgdir, argv);
   // TODO: WEEK2 load arguments
   ctx->eflags = 0x202; // TODO: WEEK2-interrupt change me to 0x202
-  
+  // print_context(ctx);
   return 0;
 }

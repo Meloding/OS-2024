@@ -25,9 +25,13 @@ void init_proc() {
   memset(curr->usems, 0, sizeof(curr->usems));
 
   curr->tgid = 0;
-  curr->thread_num = 0;
+  curr->thread_num = 1;
   curr->thread_group = NULL;
   curr->group_leader = NULL;
+
+  curr->joinable = 1;
+  curr->detached = 0;
+  sem_init(&curr->join_sem, 0);
 
   // Lab2-1, set status and pgdir
   // Lab2-4, init zombie_sem
@@ -52,8 +56,11 @@ proc_t* proc_alloc() {
       memset(cur->usems, 0, sizeof(cur->usems));
       cur->tgid = cur->pid;
       cur->group_leader = cur;
-      cur->thread_num = 0;
+      cur->thread_num = 1;
       cur->thread_group = NULL;
+      cur->joinable = 1;
+      cur->detached = 0;
+      sem_init(&cur->join_sem, 0);
       return cur;
     }
   }
@@ -76,6 +83,8 @@ void proc_run(proc_t* proc) {
   curr = proc;
   set_cr3(proc->pgdir);
   set_tss(KSEL(SEG_KDATA), (uint32_t)STACK_TOP(proc->kstack));
+  assert(proc->ctx);
+  // printf("%p\n", proc->ctx);
   irq_iret(proc->ctx);
 }
 
@@ -94,15 +103,18 @@ void proc_yield() {
 void proc_copycurr(proc_t* proc) {
   // WEEK4-process-api: copy curr proc
   vm_copycurr(proc->pgdir);
-  proc->brk = proc_curr()->brk;
-  proc->kstack->ctx = proc_curr()->kstack->ctx;
+  proc->brk = proc_curr()->group_leader->brk;
+  // printf("ds: %x\n", curr->ctx->ds);
+  proc->kstack->ctx = *proc_curr()->ctx;
+  // printf("ds: %x\n", proc->kstack->ctx.ds);
   proc->kstack->ctx.eax = 0;
-  proc->parent = proc_curr();
-  proc_curr()->child_num++;
+  proc->parent = proc_curr()->group_leader;
+  proc_curr()->group_leader->child_num++;
   // WEEK5-semaphore: dup opened usems
   for (int i = 0; i < MAX_USEM; i++) {
-    if (curr->usems[i] == NULL) continue;
-    proc->usems[i] = usem_dup(curr->usems[i]);
+    // printf("----------------%d %p\n", i, curr->group_leader->usems[i]);
+    if (curr->group_leader->usems[i] == NULL) continue;
+    proc->usems[i] = usem_dup(curr->group_leader->usems[i]);
   }
   // Lab3-1: dup opened files
   // Lab3-2: dup cwd
@@ -114,7 +126,9 @@ void proc_makezombie(proc_t* proc, int exitcode) {
   proc->status = ZOMBIE;
   proc->exit_code = exitcode;
   for (int i = 0; i < PROC_NUM; ++i) {
-    if (pcb[i].parent == proc) pcb[i].parent = NULL;
+    if (pcb[i].parent == proc) {
+      proc_set_kernel_parent(&pcb[i]);
+    }
   }
 
   // WEEK5-semaphore: release parent's semaphore
@@ -123,6 +137,7 @@ void proc_makezombie(proc_t* proc, int exitcode) {
   // Lab3-1: close opened files
   // Lab3-2: close cwd
   // TODO();
+  sem_v(&proc->join_sem);
 }
 
 proc_t* proc_findzombie(proc_t* proc) {
@@ -179,7 +194,34 @@ void schedule(Context* ctx) {
   }
 }
 
-void thread_free(proc_t *thread) {
+void thread_free(proc_t* thread) {
   thread->status = UNUSED;
   thread->group_leader->thread_num--;
+  // memset(thread, 0, sizeof(proc_t));
+}
+
+int thread_detach(int tid) {
+  for (int i = 0; i < PROC_NUM; i++) {
+    if (pcb[i].pid == tid) {
+      pcb[i].detached = 1;
+      pcb[i].joinable = 0;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+void proc_set_kernel_parent(proc_t* proc) {
+  proc_t* kernel = &pcb[0];
+  proc->parent = kernel;
+  kernel->child_num++;
+}
+
+proc_t* pid2proc(int pid) {
+  for (int i = 0; i < PROC_NUM; i++) {
+    if (pcb[i].pid == pid) {
+      return pcb + i;
+    }
+  }
+  return NULL;
 }
